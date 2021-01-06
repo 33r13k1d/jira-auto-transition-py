@@ -1,4 +1,6 @@
+import sys
 from typing import Optional
+import logging
 
 import aiohttp
 from fastapi import FastAPI, Body, Depends
@@ -13,11 +15,24 @@ class Settings(BaseSettings):
     PARENT_IN_PROGRESS_STATUS_NAME: str = "In Progress"
     PARENT_DONE_STATUS_NAME: str = "Done"
 
+    LOG_LEVEL: str = "INFO"
+
     class Config:
         env_file = ".env"
 
 
 settings = Settings()
+
+logger = logging.getLogger("app")
+logger.setLevel(settings.LOG_LEVEL)
+console = logging.StreamHandler(sys.stdout)
+console.setLevel(settings.LOG_LEVEL)
+formatter = logging.Formatter("[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s")
+console.setFormatter(formatter)
+logger.addHandler(console)
+
+logger = logger.getChild(__name__)
+
 app = FastAPI()
 
 
@@ -65,7 +80,7 @@ async def handle_jira_subtask_transition(body: dict = Body(...), client: aiohttp
 
     parent: dict = body["issue"]["fields"].get("parent")
     if not parent:
-        print("Not a subtask issue type. Check your webhook configuration.")
+        logger.warning('"%s" does not have a parent issue. Check webhook configuration in JIRA', body["issue"]["key"])
         return
 
     async with client.get(parent["self"]) as r:
@@ -88,17 +103,19 @@ async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, ta
     current_status_name = issue["fields"]["status"]["name"]
 
     if current_status_name == target_status_name or current_status_name not in set(TARGET_STATUSES_MAP.values()):
-        print("Transition is not needed")
+        logger.debug(
+            'Skipping "%s" transition from "%s" to "%s"', issue["key"], current_status_name, target_status_name
+        )
         return
 
     async with client.get(issue["self"] + "/transitions") as r:
         r.raise_for_status()
         parent_transitions: dict = (await r.json())["transitions"]
 
-    transition = next((t for t in parent_transitions if t["to"]["name"] == target_status_name), None)
+    transition: dict = next((t for t in parent_transitions if t["to"]["name"] == target_status_name), None)
 
     if not transition:
-        print(f'Transition from "{issue["fields"]["status"]["name"]}" to "{target_status_name}" not found')
+        logger.warning(f'"%s" cannot be moved from "%s" to "%s"', issue["key"], current_status_name, target_status_name)
         return
 
     payload = {"transition": {"id": transition["id"]}}
