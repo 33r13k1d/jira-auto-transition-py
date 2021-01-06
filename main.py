@@ -22,8 +22,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+app = FastAPI()
 
-logger = logging.getLogger("app")
+logger: logging.Logger = logging.getLogger("app")
 logger.setLevel(settings.LOG_LEVEL)
 console = logging.StreamHandler(sys.stdout)
 console.setLevel(settings.LOG_LEVEL)
@@ -31,9 +32,7 @@ formatter = logging.Formatter("[%(asctime)s] [%(name)s] [%(levelname)s] %(messag
 console.setFormatter(formatter)
 logger.addHandler(console)
 
-logger = logger.getChild(__name__)
-
-app = FastAPI()
+logger: logging.Logger = logger.getChild(__name__)
 
 
 class HttpClient:
@@ -77,6 +76,7 @@ TARGET_STATUSES_MAP = {
 
 @app.post("/hook")
 async def handle_jira_subtask_transition(body: dict = Body(...), client: aiohttp.ClientSession = Depends(jira_client)):
+    logger.debug('Processing "%s" event for "%s"', body["webhookEvent"], body["issue"]["key"])
 
     parent: dict = body["issue"]["fields"].get("parent")
     if not parent:
@@ -100,7 +100,7 @@ async def handle_jira_subtask_transition(body: dict = Body(...), client: aiohttp
 
 
 async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, target_status_name: str):
-    current_status_name = issue["fields"]["status"]["name"]
+    current_status_name: str = issue["fields"]["status"]["name"]
 
     if current_status_name == target_status_name or current_status_name not in set(TARGET_STATUSES_MAP.values()):
         logger.debug(
@@ -115,9 +115,10 @@ async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, ta
     transition: dict = next((t for t in parent_transitions if t["to"]["name"] == target_status_name), None)
 
     if not transition:
-        logger.warning(f'"%s" cannot be moved from "%s" to "%s"', issue["key"], current_status_name, target_status_name)
+        logger.warning(f'Cannot move "%s" from "%s" to "%s"', issue["key"], current_status_name, target_status_name)
         return
 
     payload = {"transition": {"id": transition["id"]}}
     async with client.post(issue["self"] + "/transitions", json=payload) as r:
         r.raise_for_status()
+        logger.debug('Moved "%s" from "%s" to "%s"', issue["key"], current_status_name, target_status_name)
