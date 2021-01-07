@@ -1,6 +1,7 @@
 import sys
 from typing import Optional
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 import aiohttp
 from fastapi import FastAPI, Body, Depends
@@ -10,6 +11,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     JIRA_ACCESS_TOKEN: str
+    JIRA_BASE_URL: Optional[str] = None
 
     PARENT_READY_FOR_DEV_STATUS_NAME: str = "To Do"
     PARENT_IN_PROGRESS_STATUS_NAME: str = "In Progress"
@@ -74,6 +76,16 @@ TARGET_STATUSES_MAP = {
 }
 
 
+def update_jira_api_url(url: str) -> str:
+    if not settings.JIRA_BASE_URL:
+        return url
+
+    url = list(urlsplit(url))
+    base_url = list(urlsplit(settings.JIRA_BASE_URL))
+
+    return urlunsplit(base_url[:2] + url[2:])
+
+
 @app.post("/hook")
 async def handle_jira_subtask_event(body: dict = Body(...), client: aiohttp.ClientSession = Depends(jira_client)):
     logger.debug('Processing "%s" event for "%s"', body["webhookEvent"], body["issue"]["key"])
@@ -83,7 +95,7 @@ async def handle_jira_subtask_event(body: dict = Body(...), client: aiohttp.Clie
         logger.warning('"%s" does not have a parent issue. Check webhook configuration in JIRA', body["issue"]["key"])
         return
 
-    async with client.get(parent["self"]) as r:
+    async with client.get(update_jira_api_url(parent["self"])) as r:
         r.raise_for_status()
         parent_issue: dict = await r.json()
 
@@ -108,7 +120,7 @@ async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, ta
         )
         return
 
-    async with client.get(issue["self"] + "/transitions") as r:
+    async with client.get(update_jira_api_url(issue["self"]) + "/transitions") as r:
         r.raise_for_status()
         parent_transitions: dict = (await r.json())["transitions"]
 
@@ -119,6 +131,6 @@ async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, ta
         return
 
     payload = {"transition": {"id": transition["id"]}}
-    async with client.post(issue["self"] + "/transitions", json=payload) as r:
+    async with client.post(update_jira_api_url(issue["self"]) + "/transitions", json=payload) as r:
         r.raise_for_status()
         logger.debug('Moved "%s" from "%s" to "%s"', issue["key"], current_status_name, target_status_name)
