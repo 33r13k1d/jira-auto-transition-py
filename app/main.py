@@ -75,7 +75,7 @@ TARGET_STATUSES_MAP = {
 
 
 @app.post("/hook")
-async def handle_jira_subtask_transition(body: dict = Body(...), client: aiohttp.ClientSession = Depends(jira_client)):
+async def handle_jira_subtask_event(body: dict = Body(...), client: aiohttp.ClientSession = Depends(jira_client)):
     logger.debug('Processing "%s" event for "%s"', body["webhookEvent"], body["issue"]["key"])
 
     parent: dict = body["issue"]["fields"].get("parent")
@@ -99,7 +99,7 @@ async def handle_jira_subtask_transition(body: dict = Body(...), client: aiohttp
     await do_transition_if_needed(client, parent_issue, target_status_name)
 
 
-async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, target_status_name: str):
+async def do_transition_if_needed(client: aiohttp.ClientSession, issue: dict, target_status_name: str) -> None:
     current_status_name: str = issue["fields"]["status"]["name"]
 
     if current_status_name == target_status_name or current_status_name not in set(TARGET_STATUSES_MAP.values()):
