@@ -44,7 +44,7 @@ def test_single_subtask_transitions(
     aioresps.get(td.parent_issue_transitions_url, payload=task_transitions)
     aioresps.post(td.parent_issue_transitions_url)
 
-    r: Response = client.post(f"hook", json=td.issue_updated if subtask_statuses else td.issue_deleted)
+    r: Response = client.post(f"sub-task-event", json=td.issue_updated if subtask_statuses else td.issue_deleted)
 
     assert r.status_code == 200
     assert len(aioresps.requests) == 3
@@ -59,7 +59,7 @@ def test_transition_not_found(aioresps: aioresponses, client: TestClient) -> Non
     aioresps.get(td.parent_issue_url, payload=td.parent_issue)
     aioresps.get(td.parent_issue_transitions_url, payload=td.in_progress_transitions)
 
-    r: Response = client.post(f"hook", json=td.issue_updated)
+    r: Response = client.post(f"sub-task-event", json=td.issue_updated)
 
     assert r.status_code == 200
     assert len(aioresps.requests) == 2
@@ -71,7 +71,7 @@ def test_jira_deletion_lag(aioresps: aioresponses, client: TestClient) -> None:
     aioresps.get(td.parent_issue_transitions_url, payload=td.in_progress_transitions)
     aioresps.post(td.parent_issue_transitions_url)
 
-    r: Response = client.post(f"hook", json=td.issue_deleted)
+    r: Response = client.post(f"sub-task-event", json=td.issue_deleted)
 
     assert r.status_code == 200
     assert len(aioresps.requests) == 3
@@ -81,7 +81,7 @@ def test_jira_deletion_lag(aioresps: aioresponses, client: TestClient) -> None:
 def test_skip_transition_to_current_status(aioresps: aioresponses, client: TestClient) -> None:
     aioresps.get(td.parent_issue_url, payload=td.parent_issue_transition_not_required)
 
-    r: Response = client.post(f"hook", json=td.issue_created)
+    r: Response = client.post(f"sub-task-event", json=td.issue_created)
 
     assert r.status_code == 200
     assert len(aioresps.requests) == 1
@@ -91,7 +91,7 @@ def test_skip_transition_to_current_status(aioresps: aioresponses, client: TestC
 def test_skip_transition_from_unknown_status(aioresps: aioresponses, client: TestClient) -> None:
     aioresps.get(td.parent_issue_url, payload=td.parent_issue_in_unknown_status)
 
-    r: Response = client.post(f"hook", json=td.issue_created)
+    r: Response = client.post(f"sub-task-event", json=td.issue_created)
 
     assert r.status_code == 200
     assert len(aioresps.requests) == 1
@@ -99,7 +99,7 @@ def test_skip_transition_from_unknown_status(aioresps: aioresponses, client: Tes
 
 
 def test_event_from_non_subtask_issue(aioresps: aioresponses, client: TestClient) -> None:
-    r: Response = client.post(f"hook", json=td.non_subtask_issue_updated)
+    r: Response = client.post(f"sub-task-event", json=td.non_subtask_issue_updated)
 
     assert r.status_code == 200
     assert not aioresps.requests

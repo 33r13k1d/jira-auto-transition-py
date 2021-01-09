@@ -86,7 +86,7 @@ def update_jira_api_url(url: str) -> str:
     return urlunsplit(base_url[:2] + url[2:])
 
 
-@app.post("/hook")
+@app.post("/sub-task-event")
 async def handle_jira_subtask_event(body: dict = Body(...), client: aiohttp.ClientSession = Depends(jira_client)):
     logger.debug('Processing "%s" event for "%s"', body["webhookEvent"], body["issue"]["key"])
 
