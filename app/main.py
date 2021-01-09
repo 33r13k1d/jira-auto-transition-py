@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    RELAXED_SSL: bool = False
+
     class Config:
         env_file = ".env"
 
@@ -42,7 +44,9 @@ class HttpClient:
 
     @classmethod
     def start(cls, headers):
-        cls.session = aiohttp.ClientSession(headers=headers)
+        cls.session = aiohttp.ClientSession(
+            headers=headers, connector=aiohttp.TCPConnector(ssl=False if settings.RELAXED_SSL else None)
+        )
 
     @classmethod
     async def stop(cls):

@@ -12,6 +12,8 @@ PARENT_IN_PROGRESS_STATUS_NAME: str = "In Progress"
 PARENT_DONE_STATUS_NAME: str = "Done"
 
 LOG_LEVEL: str = "INFO"
+
+RELAXED_SSL: bool = False
 ```
 
 `.env` file can be used for configuration.
