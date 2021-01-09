@@ -1,6 +1,6 @@
 version: "3"
 services:
-  jira-auto-transition:
+  listener:
     build: .
     ports:
       - "8118:8000"
