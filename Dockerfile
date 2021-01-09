@@ -1,8 +1,8 @@
 from python:3.9
 
-RUN mkdir /jira-auto-transition-py
+RUN mkdir /jira-auto-transition
 
-WORKDIR /jira-auto-transition-py
+WORKDIR /jira-auto-transition
 
 COPY ./requirements.txt .
 
