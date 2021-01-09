@@ -10,7 +10,7 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    JIRA_ACCESS_TOKEN: str
+    JIRA_AUTH_HEADER: str
     JIRA_BASE_URL: Optional[str] = None
 
     PARENT_READY_FOR_DEV_STATUS_NAME: str = "To Do"
@@ -59,7 +59,7 @@ jira_client = HttpClient()
 
 @app.on_event("startup")
 async def startup():
-    headers = {"Authorization": f"Bearer {settings.JIRA_ACCESS_TOKEN}"}
+    headers = {"Authorization": settings.JIRA_AUTH_HEADER}
     jira_client.start(headers)
 
 

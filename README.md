@@ -4,7 +4,7 @@ Automatically change parent issue status according to children's statuses.
 
 Configuration options (env vars):
 ```
-JIRA_ACCESS_TOKEN: str
+JIRA_AUTH_HEADER: str
 JIRA_BASE_URL: Optional[str] = None
 
 PARENT_READY_FOR_DEV_STATUS_NAME: str = "To Do"
